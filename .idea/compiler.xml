@@ -3,4 +3,9 @@
   <component name="CompilerConfiguration">
     <bytecodeTargetLevel target="11" />
   </component>
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="eeg_signal.main" options="--add-exports jdk.hotspot.agent/sun.jvm.hotspot.debugger.win32.coff=ALL-UNNAMED" />
+    </option>
+  </component>
 </project>
