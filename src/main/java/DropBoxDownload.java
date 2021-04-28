@@ -41,6 +41,7 @@ public class DropBoxDownload {
         // Return full string
         return total.toString();
     }
+
     public static void main(String args[]) throws DbxException {
         // Create Dropbox client
         DbxRequestConfig config = DbxRequestConfig.newBuilder("dropbox/java-tutorial").build();
@@ -48,10 +49,13 @@ public class DropBoxDownload {
         FullAccount account = clientDBX.users().getCurrentAccount();
         System.out.println(account.getName().getDisplayName());
         ListFolderResult result = clientDBX.files().listFolder("/应用/mind monitor");
+
         while (true) {
+
             for (Metadata metadata : ((ListFolderResult) result).getEntries()) {
                 System.out.println(metadata.getPathLower());
             }
+
             int size = ((ListFolderResult) result).getEntries().size();
             Metadata lastMetadata = ((ListFolderResult) result).getEntries().get(size - 1);
             String path = lastMetadata.getPathLower();
@@ -60,13 +64,16 @@ public class DropBoxDownload {
             FileInputStream fis = null;
             ZipInputStream zipIs = null;
             ZipEntry zEntry = null;
+
             try{
+
                 OutputStream outputStream = new FileOutputStream(localPath);
                 FileMetadata metadata = clientDBX.files()
                         .downloadBuilder(path)
                         .download(outputStream);
                 fis = new FileInputStream(localPath);
                 zipIs = new ZipInputStream(new BufferedInputStream(fis));
+
                 while((zEntry = zipIs.getNextEntry()) != null){
                     try{
                         byte[] tmp = new byte[4*1024];
@@ -81,52 +88,58 @@ public class DropBoxDownload {
                         fos.flush();
                         BufferedReader br = new BufferedReader(new FileReader(opFilePath));
                         String line;
-                        FileWriter csvWriter = new FileWriter("sleepScore.csv");
+                        FileWriter csvWriter = new FileWriter("Score.csv");
+                        System.out.println("begin writing csv");
                         csvWriter.append("TimeStamp");
                         csvWriter.append(",");
                         csvWriter.append("score");
                         csvWriter.append("\n");
-                        double remLen = 0;
-                        int hour = 0;
-                        int min = 0;
-                        double sec = 0;
+                        csvWriter.flush();
+                        float remLen = 0;
+                        float hour = 0;
+                        line = br.readLine();
                         while ((line = br.readLine()) != null) {
+
+                            int count  = 0;
+                            long totalScore = 0;
                             String[] cols = line.split(",");
-                            try{
-                                double deltaVal = Double. parseDouble(cols[3]);
-                                deltaVal = Math.pow(10, deltaVal/10) * 60;
-                                if (deltaVal < 40){
-                                    remLen += 0.1;
-                                    hour = (int)(remLen / 3600);
-                                    min = (int)((remLen % 3600) / 60);
-                                    sec = remLen % 60;
+                            String timeStamp = cols[0];
+                            while (line != null && count < 300){
+                                try{
+                                    String[] colss = line.split(",");
+                                    line = br.readLine();
+                                    if (colss[2].equals("Delta_AF7")) continue;
+                                    double deltaVal = Double. parseDouble(colss[2]);
+                                    deltaVal = Math.pow(10, deltaVal/10) * 60;
+                                    totalScore += deltaVal;
+                                    count += 1;
+                                    System.out.println("the total score is " + totalScore);
+                                }catch(Exception e){
+                                    System.out.println(e);
+                                    line = br.readLine();
+                                    continue;
                                 }
-                                System.out.println("the sleep score is " + deltaVal);
-                                cols[3] = String.valueOf(deltaVal);
-                            }catch(Exception e){
-                                continue;
 
                             }
-                            String[] newCols = {cols[0], cols[3]};
-                            if (cols[3].equals("Delta_AF8")) continue;
+
+                            long averageScore = totalScore / count;
+                            System.out.println("the average score is " + averageScore);
+                            if (averageScore >= 60 && averageScore <= 70){
+                                remLen += 300;
+                                hour = (remLen / 3600);
+                            }
+
+                            String[] newCols = {cols[0], String.valueOf(averageScore)};
+                            System.out.println("the new Cols is " + newCols[0] + " " + newCols[1]);
+
                             HttpGet httpGet = new HttpGet("http://ec2-54-236-12-35.compute-1.amazonaws.com/senddata.php");
                             URI uri = new URIBuilder(httpGet.getURI())
-                                    .addParameter("rtype", "put")
-                                    .addParameter("table", "eeg_rem")
-                                    .addParameter("patient_id", "1")
-                                    .addParameter("sensor_id", "1")
-                                    .addParameter("time_stamp", cols[0])
-                                    .addParameter("value", cols[3])
-                                    .addParameter("user_name", "default")
-                                    .addParameter("password", "rapid123")
-                                    .build();
-                            URI uri1 = new URIBuilder(httpGet.getURI())
                                     .addParameter("rtype", "put")
                                     .addParameter("table", "eeg_sensor")
                                     .addParameter("patient_id", "1")
                                     .addParameter("sensor_id", "1")
-                                    .addParameter("time_stamp", cols[0])
-                                    .addParameter("value", String.format("%dh%dmin%fseconds", hour, min, sec))
+                                    .addParameter("time_stamp", timeStamp)
+                                    .addParameter("value", String.valueOf(averageScore))
                                     .addParameter("user_name", "default")
                                     .addParameter("password", "rapid123")
                                     .build();
@@ -136,19 +149,37 @@ public class DropBoxDownload {
                             HttpEntity entity = response.getEntity();
                             String str = EntityUtils.toString(entity);
                             System.out.println(str);
-                            System.out.println("the status code is ");
-                            System.out.println(response.getStatusLine());
-                            ((HttpRequestBase) httpGet).setURI(uri);
-                            CloseableHttpClient client1 = HttpClientBuilder.create().build();
-                            CloseableHttpResponse response1 = client1.execute(httpGet);
-                            HttpEntity entity1 = response1.getEntity();
-                            String str1 = EntityUtils.toString(entity);
-                            System.out.println(str1);
-                            System.out.println("the status code is ");
-                            System.out.println(response1.getStatusLine());
+                            System.out.println("the status code is " + response.getStatusLine());
+                            System.out.println("the value is " + String.valueOf(averageScore));
                             client.close();
+
+                            HttpGet httpGet1 = new HttpGet("http://ec2-54-236-12-35.compute-1.amazonaws.com/senddata.php");
+                            //String val = String.format("%dh%dmin", hour, min);
+                            String val = String.valueOf(hour);
+                            URI uri1 = new URIBuilder(httpGet1.getURI())
+                                    .addParameter("rtype", "put")
+                                    .addParameter("table", "eeg_rem")
+                                    .addParameter("patient_id", "1")
+                                    .addParameter("sensor_id", "1")
+                                    .addParameter("time_stamp", timeStamp)
+                                    .addParameter("value", val)
+                                    .addParameter("user_name", "default")
+                                    .addParameter("password", "rapid123")
+                                    .build();
+                            ((HttpRequestBase) httpGet1).setURI(uri1);
+                            CloseableHttpClient client1 = HttpClientBuilder.create().build();
+                            CloseableHttpResponse response1 = client1.execute(httpGet1);
+                            HttpEntity entity1 = response1.getEntity();
+                            String str1 = EntityUtils.toString(entity1);
+                            System.out.println(str1);
+                            System.out.println("the status code is " + response1.getStatusLine());
+                            System.out.println("the rem len is " + val);
+                            client1.close();
+
                             csvWriter.append(String.join(",", newCols));
+                            System.out.println(String.join(",", newCols));
                             csvWriter.append("\n");
+                            csvWriter.flush();
                         }
                         fos.close();
                     } catch(Exception ex){
