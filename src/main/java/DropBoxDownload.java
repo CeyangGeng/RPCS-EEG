@@ -113,9 +113,9 @@ public class DropBoxDownload {
                                     deltaVal = Math.pow(10, deltaVal/10) * 60;
                                     totalScore += deltaVal;
                                     count += 1;
-                                    System.out.println("the total score is " + totalScore);
+                                    //System.out.println("the total score is " + totalScore);
                                 }catch(Exception e){
-                                    System.out.println(e);
+//                                    System.out.println(e);
                                     line = br.readLine();
                                     continue;
                                 }
@@ -130,9 +130,9 @@ public class DropBoxDownload {
                             }
 
                             String[] newCols = {cols[0], String.valueOf(averageScore)};
-                            System.out.println("the new Cols is " + newCols[0] + " " + newCols[1]);
+                            //System.out.println("the new Cols is " + newCols[0] + " " + newCols[1]);
 
-                            HttpGet httpGet = new HttpGet("http://ec2-54-236-12-35.compute-1.amazonaws.com/senddata.php");
+                            HttpGet httpGet = new HttpGet("http://ec2-3-214-217-18.compute-1.amazonaws.com/senddata.php");
                             URI uri = new URIBuilder(httpGet.getURI())
                                     .addParameter("rtype", "put")
                                     .addParameter("table", "eeg_sensor")
@@ -153,7 +153,7 @@ public class DropBoxDownload {
                             System.out.println("the value is " + String.valueOf(averageScore));
                             client.close();
 
-                            HttpGet httpGet1 = new HttpGet("http://ec2-54-236-12-35.compute-1.amazonaws.com/senddata.php");
+                            HttpGet httpGet1 = new HttpGet("http://ec2-3-214-217-18.compute-1.amazonaws.com/senddata.php");
                             //String val = String.format("%dh%dmin", hour, min);
                             String val = String.valueOf(hour);
                             URI uri1 = new URIBuilder(httpGet1.getURI())
